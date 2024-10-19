@@ -1,4 +1,4 @@
--- Stored procedure to compute and store the average weighted score for all students
+-- Stored procedure to compute and store the average weighted score for a 
 CREATE PROCEDURE ComputeAverageWeightedScoreForUsers ()
 BEGIN
     UPDATE students
