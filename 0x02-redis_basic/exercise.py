@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cache class using Redis with count_calls decorator
+Cache class using Redis with call_history decorator
 """
 
 import redis
@@ -26,6 +26,32 @@ def count_calls(method: Callable) -> Callable:
         return method(self, *args, **kwargs)
     return wrapper
 
+def call_history(method: Callable) -> Callable:
+    """
+    Decorator to store the history of inputs and outputs for a function.
+
+    Args:
+        method (Callable): The method to be decorated.
+
+    Returns:
+        Callable: The wrapped method with history storage functionality.
+    """
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """Wrapper function to store call history."""
+        input_key = f"{method.__qualname__}:inputs"
+        output_key = f"{method.__qualname__}:outputs"
+
+        # Store input arguments
+        self._redis.rpush(input_key, str(args))
+
+        # Execute the original method and store the output
+        result = method(self, *args, **kwargs)
+        self._redis.rpush(output_key, str(result))
+
+        return result
+    return wrapper
+
 class Cache:
     """Cache class to interact with Redis."""
     
@@ -35,6 +61,7 @@ class Cache:
         self._redis.flushdb()
 
     @count_calls
+    @call_history
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         Store the input data in Redis using a random key and return the key.
@@ -96,4 +123,6 @@ if __name__ == "__main__":
     key = cache.store("example data")
     print(f"Data stored with key: {key}")
     print(f"Store method called {cache._redis.get('Cache.store_calls').decode('utf-8')} times")
+    print(f"Input history: {cache._redis.lrange('Cache.store:inputs', 0, -1)}")
+    print(f"Output history: {cache._redis.lrange('Cache.store:outputs', 0, -1)}")
 
