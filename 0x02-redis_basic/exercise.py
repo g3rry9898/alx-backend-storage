@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cache class using Redis with call_history decorator
+Cache class using Redis with call_history and replay functionality
 """
 
 import redis
@@ -51,6 +51,24 @@ def call_history(method: Callable) -> Callable:
 
         return result
     return wrapper
+
+def replay(method: Callable):
+    """
+    Display the history of calls of a particular function.
+
+    Args:
+        method (Callable): The method to replay the history for.
+    """
+    redis_instance = method.__self__._redis
+    input_key = f"{method.__qualname__}:inputs"
+    output_key = f"{method.__qualname__}:outputs"
+
+    inputs = redis_instance.lrange(input_key, 0, -1)
+    outputs = redis_instance.lrange(output_key, 0, -1)
+
+    print(f"{method.__qualname__} was called {len(inputs)} times:")
+    for inp, out in zip(inputs, outputs):
+        print(f"{method.__qualname__}(*{inp.decode('utf-8')}) -> {out.decode('utf-8')}")
 
 class Cache:
     """Cache class to interact with Redis."""
@@ -120,9 +138,8 @@ class Cache:
 
 if __name__ == "__main__":
     cache = Cache()
-    key = cache.store("example data")
-    print(f"Data stored with key: {key}")
-    print(f"Store method called {cache._redis.get('Cache.store_calls').decode('utf-8')} times")
-    print(f"Input history: {cache._redis.lrange('Cache.store:inputs', 0, -1)}")
-    print(f"Output history: {cache._redis.lrange('Cache.store:outputs', 0, -1)}")
+    cache.store("foo")
+    cache.store("bar")
+    cache.store(42)
+    replay(cache.store)
 
