@@ -1,11 +1,30 @@
 #!/usr/bin/env python3
 """
-Cache class using Redis with additional get methods
+Cache class using Redis with count_calls decorator
 """
 
 import redis
 import uuid
 from typing import Union, Callable, Optional
+from functools import wraps
+
+def count_calls(method: Callable) -> Callable:
+    """
+    Decorator that counts the number of calls to a method.
+
+    Args:
+        method (Callable): The method to be decorated.
+
+    Returns:
+        Callable: The wrapped method with call count functionality.
+    """
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """Wrapper function to count calls."""
+        key = f"{method.__qualname__}_calls"
+        self._redis.incr(key)
+        return method(self, *args, **kwargs)
+    return wrapper
 
 class Cache:
     """Cache class to interact with Redis."""
@@ -15,6 +34,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         Store the input data in Redis using a random key and return the key.
@@ -73,12 +93,7 @@ class Cache:
 
 if __name__ == "__main__":
     cache = Cache()
-    TEST_CASES = {
-        b"foo": None,
-        123: int,
-        "bar": lambda d: d.decode("utf-8")
-    }
-    for value, fn in TEST_CASES.items():
-        key = cache.store(value)
-        assert cache.get(key, fn=fn) == value
+    key = cache.store("example data")
+    print(f"Data stored with key: {key}")
+    print(f"Store method called {cache._redis.get('Cache.store_calls').decode('utf-8')} times")
 
