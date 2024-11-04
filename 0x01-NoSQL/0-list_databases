@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""
+This script connects to a MongoDB database and lists all databases.
+"""
 from pymongo import MongoClient
 
 # Replace the URI with your actual MongoDB connection string
