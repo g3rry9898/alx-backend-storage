@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+// my comment
 """
 This script connects to a MongoDB database and lists all databases.
 """
